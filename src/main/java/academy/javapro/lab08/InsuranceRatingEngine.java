@@ -9,15 +9,18 @@ import java.util.function.Predicate;
 
 public class InsuranceRatingEngine {
     // Knowledge base (facts about insurance rates)
-    // TODO: Create a instance variable named knowledgeBase of type Map<String, Object> and initialize it with a new HashMap
-
+	Map<String, Object> knowledgeBase = new HashMap<String, Object>();
     // Rules list
-    // TODO: Create a instance variable named rules of type List<Rule> and initialize it with a new ArrayList
-
+	List<Rule> rules = new ArrayList<>();
     // Constructor initializes the knowledge base and rules
-    // TODO: Create a public constructor for InsuranceRatingEngine
-    // TODO: Call the initializeKnowledgeBase method
-    // TODO: Call the initializeRules method
+	
+	public InsuranceRatingEngine() {
+		
+	initializeKnowledgeBase();
+	initializeRules();
+		
+	}
+	
 
     private void initializeKnowledgeBase() {
         // Base rates by vehicle category
@@ -25,14 +28,32 @@ public class InsuranceRatingEngine {
         // TODO: Add the following key baseRate.suv with value 1200.0 to the knowledgeBase map
         // TODO: Add the following key baseRate.luxury with value 1500.0 to the knowledgeBase map
         // TODO: Add the following key baseRate.sports with value 1800.0 to the knowledgeBase map
+    	
+    	knowledgeBase = new HashMap<>();
+    	
+    			knowledgeBase.put("baseRate.sedan", 1000.0);
+    			knowledgeBase.put("baseRate.suv", 1200.0);
+    	        knowledgeBase.put("baseRate.luxury", 1500.0);
+    	        knowledgeBase.put("baseRate.sports", 1800.0);
 
         // Age risk factors
+    	        
+    	        knowledgeBase.put("ageFactor.16-19", 2.0);
+    	        knowledgeBase.put("ageFactor.20-24", 1.5);
+    	        knowledgeBase.put("ageFactor.25-65", 1.0);
+    	        knowledgeBase.put("ageFactor.66+", 1.3);
+    	        
         // TODO: Add the following key ageFactor.16-19 with value 2.0 to the knowledgeBase map
         // TODO: Add the following key ageFactor.20-24 with value 1.5 to the knowledgeBase map
         // TODO: Add the following key ageFactor.25-65 with value 1.0 to the knowledgeBase map
         // TODO: Add the following key ageFactor.66+ with value 1.3 to the knowledgeBase map
 
         // Accident surcharges
+    	        
+    	knowledgeBase.put("accidentSurcharge.0", 0.0);
+        knowledgeBase.put("accidentSurcharge.1", 300.0);
+        knowledgeBase.put("accidentSurcharge.2+", 600.0);
+        
         // TODO: Add the following key accidentSurcharge.0 with value 0.0 to the knowledgeBase map
         // TODO: Add the following key accidentSurcharge.1 with value 300.0 to the knowledgeBase map
         // TODO: Add the following key accidentSurcharge.2+ with value 600.0 to the knowledgeBase map
@@ -40,6 +61,26 @@ public class InsuranceRatingEngine {
 
     private void initializeRules() {
         // Base rate rule - determines the starting premium based on vehicle type
+    	
+    	rules = new ArrayList();
+    	
+    	Rule baseRateRule = new Rule(
+    	        "base rate",  // Rule name
+    	        profile -> true, // Predicate: applies to all profiles
+    	        (profile, premium) -> { // BiConsumer: action to take
+    	            String vehicleCategory = determineVehicleCategory(profile); // Get vehicle category
+    	            Double baseRate = knowledgeBase.get("baseRate." + vehicleCategory); // Get base rate from knowledgeBase
+    	            if (baseRate != null) {
+    	                premium.setBaseRate(baseRate); // Set base rate on premium object
+    	            } else {
+    	                // Handle the case where the vehicle category is not found
+    	                System.err.println("Error: base rate not found for vehicle: " + vehicleCategory);
+    	            }
+    	        }
+    	    );
+    	    rules.add(baseRateRule);
+    	    
+    	    
         // TODO: Call the rules.add method with a new Rule object where the first argument is "base rate"
         // TODO: Create a new Predicate object profile that always returns true
         // TODO: Create a new BiConsumer object with profile and premium as arguments
@@ -109,9 +150,29 @@ public class InsuranceRatingEngine {
     // Rule class
     static class Rule {
         // TODO: Create a private String variable named name
-        // TODO: Create a private Predicate<DriverProfile> variable named condition
+    	// TODO: Create a private Predicate<DriverProfile> variable named condition
         // TODO: Create a private BiConsumer<DriverProfile, Premium> variable named action
+    	
+    	String name;
+    	
+    	private Predicate<DriverProfile> condition;
+    	
+    	private BiConsumer<DriverProfile, Premium> action;
+        
 
+		public Rule(String name, Object condition, Object action) {
+		
+			this.name = name;
+			
+		}
+		
+		public Object matches(Object condition) {
+			
+			
+			return condition;
+		}
+    		
+    	
         // TODO: Create a public constructor for Rule with name, condition, and action as arguments and assign them to the corresponding instance variables
 
         // TODO: Create a public method named matches that takes a DriverProfile object as an argument and returns the result of the test method on the condition object with the profile as an argument
