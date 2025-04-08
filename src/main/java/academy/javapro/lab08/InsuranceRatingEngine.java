@@ -60,28 +60,86 @@ public class InsuranceRatingEngine {
     }
 
     private void initializeRules() {
+        // Initialize the rules list (assuming 'rules' is a List of Rule objects)
+        rules = new ArrayList<>();
+
         // Base rate rule - determines the starting premium based on vehicle type
-    	
-    	rules = new ArrayList();
-    	
-    	Rule baseRateRule = new Rule(
-    	        "base rate",  // Rule name
-    	        profile -> true, // Predicate: applies to all profiles
-    	        (profile, premium) -> { // BiConsumer: action to take
-    	            String vehicleCategory = determineVehicleCategory(profile); // Get vehicle category
-    	            Double baseRate = knowledgeBase.get("baseRate." + vehicleCategory); // Get base rate from knowledgeBase
-    	            if (baseRate != null) {
-    	                premium.setBaseRate(baseRate); // Set base rate on premium object
-    	            } else {
-    	                // Handle the case where the vehicle category is not found
-    	                System.err.println("Error: base rate not found for vehicle: " + vehicleCategory);
-    	            }
-    	        }
-    	    );
-    	    rules.add(baseRateRule);
+        Rule baseRateRule = new Rule(
+            "base rate",  // Rule name
+            profile -> true, // Predicate: applies to all profiles
+            (profile, premium) -> { // BiConsumer: action to take
+                String vehicleCategory = determineVehicleCategory(profile); // Get vehicle category
+                Double baseRate = (Double) knowledgeBase.get("baseRate." + vehicleCategory); // Get base rate from knowledgeBase
+                if (baseRate != null) {
+                    premium.setBaseRate(baseRate); // Set base rate on premium object
+                } else {
+                    // Handle the case where the vehicle category is not found
+                    System.err.println("Error: base rate not found for vehicle: " + vehicleCategory);
+                }
+            }
+        );
+        rules.add(baseRateRule); // Add the rule to the list
+
+        // Age factor rule - adjusts premium based on driver's age
+        Rule ageFactorRule = new Rule(
+            "age factor",
+            profile -> true,  // Applies to all profiles
+            (profile, premium) -> {
+                int age = profile.getAge(); // Get age from profile
+                Double factor;
+                String explanation;
+
+                if (age < 20) {
+                    factor = (Double) knowledgeBase.get("ageFactor.16-19");
+                    explanation = "Drivers under 20 have higher statistical risk";
+                } else if (age < 25) {
+                    factor = (Double) knowledgeBase.get("ageFactor.20-24");
+                    explanation = "Drivers 20-24 have moderately higher risk";
+                } else if (age < 66) {
+                    factor = (Double) knowledgeBase.get("ageFactor.25-65");
+                    explanation = "Standard rate for drivers 25-65";
+                } else {
+                    factor = (Double) knowledgeBase.get("ageFactor.66+");
+                    explanation = "Slight increase for senior drivers";
+                }
+
+                double adjustment = premium.getBaseRate() * (factor - 1.0);
+                premium.addAdjustment("Age factor", adjustment, explanation);
+            }
+        );
+        rules.add(ageFactorRule);
+
+        // Accident history rule - adds surcharges for recent accidents
+        Predicate<DriverProfile> accidentHistoryPredicate = profile -> profile.getAccidentsInLastFiveYears() > 0;
+        
+        BiConsumer<DriverProfile, Premium> accidentHistoryAction = (profile, premium) -> {
+            
+            int accidents = profile.getAccidentsInLastFiveYears();
+          
+            double surcharge = 0.0;
+           
+            String explanation = "";
+        
+            if (accidents == 1) {
+              
+                surcharge = (Double) knowledgeBase.get("accidentSurcharge.1");
+            
+                explanation = "Surcharge for 1 accident in past 5 years";
+            }
+            
+            else if (accidents > 1) {
+                surcharge = (Double) knowledgeBase.get("accidentSurcharge.2+");
+             
+                explanation = "Major surcharge for 2+ accidents in past 5 years";
+            }
+            
+            premium.addAdjustment("Accident history", surcharge, explanation);
+        };
+        rules.add(new Rule("accident history", accidentHistoryPredicate, accidentHistoryAction));
+    
+    
     	    
-    	    
-        // TODO: Call the rules.add method with a new Rule object where the first argument is "base rate"
+        /* TODO: Call the rules.add method with a new Rule object where the first argument is "base rate"
         // TODO: Create a new Predicate object profile that always returns true
         // TODO: Create a new BiConsumer object with profile and premium as arguments
         // TODO: Create a new String variable vehicleCategory and assign the result of the determineVehicleCategory method with profile as argument
@@ -120,31 +178,48 @@ public class InsuranceRatingEngine {
         // TODO: Otherwise, assign the value of the knowledgeBase map with the key "accidentSurcharge.2+" to the surcharge variable
         // TODO: Assign the value "Major surcharge for 2+ accidents in past 5 years" to the explanation variable
 
-        // TODO: Call the addAdjustment method on the premium object with "Accident history", surcharge, and explanation as arguments
+         TODO: Call the addAdjustment method on the premium object with "Accident history", surcharge, and explanation as arguments
+         */
     }
 
     // Helper method to determine vehicle category
     private String determineVehicleCategory(DriverProfile profile) {
-        // TODO: Create a new String variable make and assign the result of the getVehicleMake method on the profile object
+    	  // TODO: Create a new String variable make and assign the result of the getVehicleMake method on the profile object
+        String make = profile.getVehicleMake();
         // TODO: Create a new String variable model and assign the result of the getVehicleModel method on the profile object
+        String model = profile.getVehicleModel();
 
         // Simple classification logic
         // TODO: If make is equal to "bmw", "mercedes", "lexus", or "audi", return "luxury"
+        if (make != null && (make.equalsIgnoreCase("bmw") || make.equalsIgnoreCase("mercedes") || make.equalsIgnoreCase("lexus") || make.equalsIgnoreCase("audi"))) {
+            return "luxury";
+        }
         // TODO: If make is equal to "ferrari", "porsche", "mustang", or "corvette", return "sports"
+        if (make != null && (make.equalsIgnoreCase("ferrari") || make.equalsIgnoreCase("porsche") || make.equalsIgnoreCase("mustang") || make.equalsIgnoreCase("corvette"))) {
+            return "sports";
+        }
         // TODO: If model is equal to "suv", "explorer", "tahoe", or "highlander", return "suv"
+        if (model != null && (model.equalsIgnoreCase("suv") || model.equalsIgnoreCase("explorer") || model.equalsIgnoreCase("tahoe") || model.equalsIgnoreCase("highlander"))) {
+            return "suv";
+        }
         // TODO: Otherwise, return "sedan"
-        throw new UnsupportedOperationException("Not implemented yet");
+        return "sedan";
     }
 
     // Calculate premium by applying all applicable rules
     public Premium calculatePremium(DriverProfile profile) {
-        // TODO: Create a new Premium object named premium
+    	 Premium premium = new Premium();
 
-        // Apply all rules that match the profile
-        // TODO: For each rule, if the rule matches the profile, apply the rule to the profile and premium
+         // Apply all rules that match the profile
+         // TODO: For each rule, if the rule matches the profile, apply the rule to the profile and premium
+         for (Rule rule : rules) {
+             if (rule.matches(profile)) {
+                 rule.apply(profile, premium);
+             }
+         }
 
-        // TODO: Return the premium object
-        throw new UnsupportedOperationException();
+         // TODO: Return the premium object
+         return premium;
     }
 
     // Rule class
@@ -160,25 +235,26 @@ public class InsuranceRatingEngine {
     	private BiConsumer<DriverProfile, Premium> action;
         
 
-		public Rule(String name, Object condition, Object action) {
-		
-			this.name = name;
-			
-		}
-		
-		public Object matches(Object condition) {
-			
-			
-			return condition;
-		}
-    		
-    	
-        // TODO: Create a public constructor for Rule with name, condition, and action as arguments and assign them to the corresponding instance variables
+		public Rule(String name, Predicate<DriverProfile> condition, BiConsumer<DriverProfile, Premium> action) {
+            // TODO: Create a public constructor for Rule with name, condition, and action as arguments and assign them to the corresponding instance variables
+            this.name = name;
+            this.condition = condition;
+            this.action = action;
+        }
 
-        // TODO: Create a public method named matches that takes a DriverProfile object as an argument and returns the result of the test method on the condition object with the profile as an argument
+        public boolean matches(DriverProfile profile) {
+            // TODO: Create a public method named matches that takes a DriverProfile object as an argument and returns the result of the test method on the condition object with the profile as an argument
+            return condition.test(profile);
+        }
 
-        // TODO: Create a public method named apply that takes a DriverProfile and Premium object as arguments and calls the accept method on the action object with the profile and premium as arguments
+        public void apply(DriverProfile profile, Premium premium) {
+            // TODO: Create a public method named apply that takes a DriverProfile and Premium object as arguments and calls the accept method on the action object with the profile and premium as arguments
+            action.accept(profile, premium);
+        }
 
-        // TODO: Create a public method named getName that returns the name instance variable
+        public String getName() {
+            // TODO: Create a public method named getName that returns the name instance variable
+            return name;
+        }
     }
 }
